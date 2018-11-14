@@ -63,20 +63,82 @@ basic.get 获取单条信息。mq 投递消息到队列，如果没有消费者�
    ### 通过 AMQP 实时访问日志
    RabbitMq 利用 amq.rabbitmq.log topic exchange 把日志发布到交换器上，并以严重级别作为路由键：error、warning、info
     
+## 集群
+   - RabbitMq 集群搭建使用 HAProxy。需要考虑持久化节点和内存节点保存、创建元数据方式和故障后，
+     主节点队列数据丢失，备份节点创建元数据的影响，
+   - Warren + HAProxy 搭建数据共享主备集群
+   - Shovel 搭建 数据中心数据复制
+## WEB 和 API 支持
+   插件: rabbitmq-manager plugin rabbitmq GUI
+   脚本: rabbitmq-admin 脚本  
+ 
+## RabbitMQ 松耦合优势
+   - 解耦应用：可以解耦应用和数据库的交互
+   - 解耦数据库写入
+   - 无缝添加新功能：对同一份数据的重复利用
+   - 复制数据与事件：Rabbit 间复制
+   - 多主（Multi-Master）互联化数据与事件
    
-   
+## AMQP 通信过程
+  AMQP 帧的组成：帧类型、信道编号、以字节为单位的帧大小、帧的有效载荷、结束字节符(0xce)
+  AMQP 帧的类型：协议头帧方法帧、内容头帧、消息体帧、心跳帧<br/>
+  AMQP 将消息编组成帧，发送的第一个帧是携带命令和执行它所需参数的方法帧。方法帧之后是内容帧，包含
+  内容和消息体，内容头帧包含消息属性以及消息体大小。AMQP的帧大小有一个上限，如果消息体超过这个上限，
+  消息内容将被拆分多个消息体帧。
+  ![RabbitMq-帧结构](image/rabbitmq-帧结构.jpeg)<br/>
+  - 消息体结构
+  ![RabbitMq-消息结构](./image/rabbitmq-消息帧.jpeg)
+  - 有效载荷 <br/>
+  方法帧: Basic | Publish | 交换器名称 | 路由键值 | Mandatory <br/>
+  内容头帧: 消息体大小 | 标志值 | 内容类型 | app_id | timestamp | 投递模式 <br/>
+  消息体帧: <br/>
+  Mandatory 标志 RabbitMq 必须投递成功，否则发布消息的过程就应该是失败的 Basic.Return <br/>
+  
+  ### 协议
+  - 声明交换器：Exchange.declare Exchange.declareOK 
+  - 声明队列：Queue.Declare Queue.DeclareOK 
+  - 绑定队列到交换器：Queue.bind Queue.bindOK
+  - 发布消息：C: Basic.Publish 内容头 消息体
+  - 消费消息：C: Basic.Consume S: Basic.ConsumeOK Basic.Deliver 消息头 消息体 C: Basic.ACK
     
+  ### 属性 Basic.Properties
+  消息属性嵌入在消息头帧中，包含描述消息的信息：
+  - content-type: 让消费者知道如何解释消息体
+  - expiration: 消息过期时间
+  - reply-to: 响应消息的路由
+  - content-coding: 指示消息体使用某种特殊的方式进行压缩和编码
+  - delivery-mode: 消息写入硬盘还是内存
+  - headers: 自由格式的属性和实现 RabbitMq 路由
+  - message-id/correlation-id: 唯一标识消息和响应信息，用于在流程中进行跟踪
+  - app-id/user-id: 消息发布者者应用程序
+  - priority
+  - timestamp: 减少消息大小，并创建一个规范定义来描述消息创建时间
+  - type: 定义发布者和消费者的契约
+
+## 消息发布性能
+  ![性能影响](./image/rabbitmq-性能影响.jpeg)
+  在 RabbitMQ中，在创建可靠投递的每个机制都会对性能产生一定的影响，创建应用体系结构时，需要牢记金发姑娘原则。
+  以下的问题可以帮助找到刚刚好的解决方案：<br/>
+     - 消费发布时保证消息进入队列的重要性有多高？
+     - 如果消息无法路由，是否应将消息返回给发布者？
+     - 如果消息无法路由，是否应该其发送到其他地方稍后进行重新路由
+     - 如果 RabbitMQ 服务器崩溃，可以接受消息丢失？
+     - RabbbitMQ 在处理新消息时是否应该确认它已经为发布者执行了所有请求的路由和将任务持久化
+     - 消息是否可以批量投递，然后从 RabbitMQ 从收到一个确认用于表明所有请求的路由和持久化任务已经批量应用
+     到所有消息中
+     - 如果你要批量发布消息，这些消息需要确认路由和持久化，那么对每一条消息是否需要对目标队列实现真正意义上的
+     原子提交
+     - 在可靠投递是否有可接受的平衡性，发布者可以使用它来实现更高的性能和消息吞吐量
+     - 消息发布还有哪些方面会影响消息吞吐量和性能
+  在非核心链路中，正常的消息发布不必处理每个可能的故障点，找到合适的平衡点获得可靠和可预测的运行时间。
+  
+   
+   
+
    
    
    
-   
-   
-   
-   
-   
-   
-   
-   
+
    
    
    
