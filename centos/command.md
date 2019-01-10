@@ -9,5 +9,5 @@
 - 查看 TCP 链接：netstat -tnp | grep 11211 | grep ESTABLISHED | grep - | wc -l
 - 查看 TCP TIME_WAIT 状态：netstat -ae|grep "TIME_WAIT"
 - 查看 socket 信息：netstat -lnp|grep 8657
--TCP 链接状态：netstat -nat|awk '{print $6}'|sort|uniq -c|sort -rn   
+- TCP 链接状态：netstat -nat|awk '{print $6}'|sort|uniq -c|sort -rn   
 - 设置TCP 端口链接：/proc/sys/net/core/somaxconn

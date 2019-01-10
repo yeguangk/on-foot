@@ -1,4 +1,4 @@
-package com.on.foot.code.test;
+package com.on.foot.code.test.web.flux;
 
 import com.google.common.collect.Queues;
 import org.slf4j.Logger;
